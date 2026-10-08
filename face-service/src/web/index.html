@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>face-service</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f5f3; --panel: #fff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e2e2dd;
+    --ok: #1f9d55; --bad: #d64545; --warn: #c98a00; --accent: #2f6fdf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --panel: #1d1d1b; --ink: #ecece8; --muted: #9a9a94; --line: #2e2e2b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+  #health { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 16px; padding: 16px; max-width: 1200px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  #preview { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 6px; display: block; object-fit: contain; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border: 2px solid; margin-right: 5px; vertical-align: -1px; }
+  input, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  input { width: 100%; }
+  button { cursor: pointer; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 6px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #events { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+  #events li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  #events img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; background: var(--line); }
+  .tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; color: #fff; }
+  .recognized { background: var(--ok); } .unknown { background: var(--bad); } .uncertain { background: var(--warn); }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+  td:last-child { text-align: right; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  label { font-size: 12px; color: var(--muted); }
+  #msg { min-height: 1.4em; margin-top: 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>face-service</h1>
+  <span id="health">connecting…</span>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>Camera</h2>
+      <img id="preview" alt="live preview">
+      <div class="legend">
+        <span><i style="border-color:#28c850"></i>match</span>
+        <span><i style="border-color:#e63232"></i>no match</span>
+        <span><i style="border-color:#fac800"></i>rejected (quality)</span>
+        <span><i style="border-color:#3278ff;background:#3278ff"></i>enrollment progress</span>
+      </div>
+    </section>
+    <section>
+      <h2>Enroll</h2>
+      <div class="row">
+        <input id="member" placeholder="member_id (e.g. 1042)">
+        <button class="primary" id="start">Start</button>
+        <button id="commit" disabled>Save</button>
+        <button id="cancel" disabled>Cancel</button>
+      </div>
+      <div class="bar"><div id="progress"></div></div>
+      <div class="muted" id="enrollStatus">idle</div>
+      <div id="msg"></div>
+    </section>
+  </div>
+  <div>
+    <section>
+      <h2>Events</h2>
+      <ul id="events"></ul>
+    </section>
+    <section>
+      <h2>Members</h2>
+      <table id="members"></table>
+    </section>
+    <section>
+      <h2>Settings</h2>
+      <div class="grid3">
+        <div><label>threshold</label><input id="threshold" type="number" step="0.01"></div>
+        <div><label>cooldown (s)</label><input id="cooldown_secs" type="number" step="1"></div>
+        <div><label>max fps</label><input id="max_fps" type="number" step="1"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><button id="save">Apply</button></div>
+    </section>
+  </div>
+</main>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const q = token ? `?token=${encodeURIComponent(token)}` : '';
+const $ = id => document.getElementById(id);
+const api = async (method, path, body) => {
+  const r = await fetch(path, {
+    method,
+    headers: { 'Authorization': `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await r.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!r.ok) throw new Error(data?.error || r.status);
+  return data;
+};
+const msg = (t, bad) => { $('msg').textContent = t; $('msg').style.color = bad ? 'var(--bad)' : 'var(--ok)'; };
+
+$('preview').src = `/v1/preview${q}`;
+
+async function refreshHealth() {
+  try {
+    const h = await api('GET', '/v1/health');
+    $('dot').className = 'dot ' + (h.camera.connected ? 'ok' : 'bad');
+    $('health').textContent = `${h.camera.name} · ${h.fps.toFixed(1)} fps · ${h.avg_ms.toFixed(0)} ms · ${h.members} members`;
+    const e = h.enroll;
+    const collecting = e?.state === 'collecting', ready = e?.state === 'ready';
+    $('progress').style.width = e ? `${100 * e.collected / e.target}%` : '0';
+    $('enrollStatus').textContent = e
+      ? `${e.member_id}: ${e.state} ${e.collected}/${e.target} — ${e.hint}` + (e.diversity != null ? ` (diversity ${e.diversity.toFixed(2)})` : '')
+      : 'idle';
+    $('commit').disabled = !ready;
+    $('cancel').disabled = !e;
+    $('start').disabled = collecting;
+  } catch (err) {
+    $('dot').className = 'dot bad';
+    $('health').textContent = err.message;
+  }
+}
+
+async function refreshMembers() {
+  const list = await api('GET', '/v1/gallery');
+  $('members').innerHTML = list.length ? '' : '<tr><td class="muted" style="text-align:left">no members yet</td></tr>';
+  for (const m of list) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m.member_id}</td><td class="muted">${m.samples} samples</td><td><button>Delete</button></td>`;
+    tr.querySelector('button').onclick = async () => {
+      if (!confirm(`Delete ${m.member_id}?`)) return;
+      await api('DELETE', `/v1/gallery/${encodeURIComponent(m.member_id)}`);
+      refreshMembers();
+    };
+    $('members').appendChild(tr);
+  }
+}
+
+async function loadConfig() {
+  const c = await api('GET', '/v1/config');
+  for (const k of ['threshold', 'cooldown_secs', 'max_fps']) $(k).value = +c.recognition[k].toFixed(3);
+}
+
+$('start').onclick = async () => {
+  const id = $('member').value.trim();
+  try { await api('POST', `/v1/enroll/${encodeURIComponent(id)}/start`, { samples: 8 }); msg('collecting… look at the camera and move your head slowly'); }
+  catch (e) { msg(e.message, true); }
+};
+$('commit').onclick = async () => {
+  const id = $('enrollStatus').textContent.split(':')[0];
+  try { const r = await api('POST', `/v1/enroll/${encodeURIComponent(id)}/commit`); msg(`saved ${r.member_id} (${r.samples} samples)`); refreshMembers(); }
+  catch (e) { msg(e.message, true); }
+};
+$('cancel').onclick = async () => { await api('DELETE', '/v1/enroll'); msg('cancelled'); };
+$('save').onclick = async () => {
+  try {
+    const body = Object.fromEntries(['threshold', 'cooldown_secs', 'max_fps'].map(k => [k, parseFloat($(k).value)]));
+    await api('PUT', '/v1/config', body); msg('settings applied');
+  } catch (e) { msg(e.message, true); }
+};
+
+const es = new EventSource(`/v1/events${q}`);
+es.onmessage = m => {
+  const e = JSON.parse(m.data);
+  const li = document.createElement('li');
+  const time = new Date(e.ts).toLocaleTimeString();
+  const who = e.type === 'recognized' ? `${e.member_id} <span class="muted">${e.score.toFixed(3)}</span>`
+    : e.type === 'uncertain' ? e.candidates.map(c => `${c.member_id} ${c.score.toFixed(2)}`).join(', ')
+    : 'unknown person';
+  li.innerHTML = `<img src="${e.snapshot}${q}" alt=""><span class="tag ${e.type}">${e.type}</span><span>${who}</span><span class="muted" style="margin-left:auto">${time}</span>`;
+  $('events').prepend(li);
+};
+
+refreshHealth(); refreshMembers(); loadConfig();
+setInterval(refreshHealth, 700);
+</script>
+</body>
+</html>

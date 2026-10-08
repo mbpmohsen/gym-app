@@ -1,0 +1,11 @@
+/target
+/data
+/gallery
+face-service.toml
+snapshot_*.jpg
+aligned_*.png
+*.dll
+/models/*.onnx
+/.vs
+/lib
+face-service-error.txt

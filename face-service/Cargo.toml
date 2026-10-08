@@ -1,0 +1,39 @@
+[package]
+name = "face-service"
+version = "0.1.0"
+edition = "2021"
+default-run = "face-service"
+
+# Milestone 1 (spike): validate the two riskiest dependencies
+#   - cam_probe: can we reliably grab frames from webcams? (nokhwa)
+#   - ort_probe: can we load and run YuNet/SFace with a bundled onnxruntime? (ort)
+
+[dependencies]
+anyhow = "1"
+axum = "0.8.9"
+futures-util = "0.3.34"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+ndarray = "0.16"
+
+# Camera: native backend (MSMF on Windows, V4L2 on Linux, AVFoundation on macOS)
+nokhwa = { version = "0.10", features = ["input-native"] }
+
+# ONNX Runtime: load-dynamic => we ship onnxruntime.dll/.so ourselves, nothing downloaded at build/install.
+# Pin exactly; the DLL version must match what this ort version expects (see README).
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["load-dynamic", "ndarray"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "sync", "time", "signal", "net", "fs"] }
+toml = "1.1.7"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "ansi", "std", "chrono"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[target."cfg(windows)".dependencies]
+windows-service = "0.8.1"
