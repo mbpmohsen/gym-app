@@ -20,6 +20,7 @@ import { motion } from 'motion/react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 
 import { PlateMark } from '@/components/page'
+import { DemoBar } from '@/components/DemoBar'
 import { ThemeMenu } from '@/components/ThemeMenu'
 import { Button } from '@/components/ui/button'
 import { get, post } from '@/lib/api'
@@ -119,7 +120,9 @@ export function Layout() {
           <motion.div key={page} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <Outlet />
           </motion.div>
+          {import.meta.env.VITE_DEMO && <div className="h-20" />}
         </main>
+        {import.meta.env.VITE_DEMO && <DemoBar />}
       </div>
     </div>
   )
@@ -164,17 +167,21 @@ function SoundStatus() {
   )
 }
 
-type FaceHealth = { reachable: boolean; error?: string; camera?: { connected: boolean; name: string }; fps?: number; events?: boolean }
+type FaceHealth = { reachable: boolean; error?: string; camera?: { connected: boolean; name: string; active?: boolean }; fps?: number; events?: boolean }
 
 /** Face-service and camera state. Without them nobody is recognized at the door. */
 function FaceStatus() {
   const q = useQuery({ queryKey: ['face-health'], queryFn: () => get<FaceHealth>('/face/health'), refetchInterval: 10_000 })
   const h = q.data
   if (!h) return null
-  const ok = h.reachable && h.camera?.connected && h.events !== false
+  // released while no window was open; comes back within seconds
+  const warming = h.reachable && (h.camera?.active === false || h.camera?.name === 'paused')
+  const ok = h.reachable && (h.camera?.connected || warming) && h.events !== false
   const text = !h.reachable
     ? 'سرویس تشخیص چهره اجرا نیست'
-    : !h.camera?.connected
+    : warming
+      ? 'در حال روشن کردن دوربین…'
+      : !h.camera?.connected
       ? 'دوربین وصل نیست'
       : h.events === false
         ? 'رویدادهای دوربین دریافت نمی‌شود'

@@ -12,6 +12,7 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTit
 import { ApiError, api, get, post } from '@/lib/api'
 import { num } from '@/lib/format'
 import type { MemberDetail } from '@/lib/types'
+import { previewSrc } from '@/lib/media'
 import { cn } from '@/lib/utils'
 
 type EnrollStatus =
@@ -95,7 +96,7 @@ export function FaceEnrollDialog({ member, onDone }: { member: MemberDetail; onD
       ) : (
         <>
           <div className="bg-muted relative aspect-[4/3] overflow-hidden rounded-lg">
-            <img src={`/api/face/preview?k=${attempt}`} alt="تصویر زنده‌ی دوربین" className="size-full object-contain" />
+            <img src={previewSrc(attempt)} alt="تصویر زنده‌ی دوربین" className="size-full object-contain" />
             {st?.state === 'ready' && (
               <div className="bg-background/70 absolute inset-0 grid place-items-center backdrop-blur-sm">
                 <CheckCircle2Icon className="text-success size-16" />

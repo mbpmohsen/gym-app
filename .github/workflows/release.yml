@@ -1,0 +1,63 @@
+# Builds the Windows installer and publishes it as a GitHub release.
+# Trigger: push a tag like v1.0.0   (git tag v1.0.0 && git push origin v1.0.0)
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            server
+            face-service
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Dependencies (ONNX Runtime, models, npm)
+        shell: pwsh
+        run: |
+          ./installer/fetch-deps.ps1
+          npm ci --prefix web
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0' }
+          ./installer/build.ps1 -Version $version
+          Get-ChildItem installer/Output/*.exe | ForEach-Object {
+            (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower() + "  " + $_.Name | Out-File "$($_.FullName).sha256" -Encoding ascii
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: installer/Output/*
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/Output/*.exe
+            installer/Output/*.sha256
+          generate_release_notes: true

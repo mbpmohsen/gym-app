@@ -5,9 +5,9 @@
 //! - closes forgotten visits every minute (auto-exit).
 
 use std::convert::Infallible;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::{
     extract::State,
@@ -16,7 +16,7 @@ use axum::{
 use chrono::{DateTime, Local, Timelike};
 use futures_util::{stream, Stream, StreamExt};
 use serde_json::{json, Value};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Notify};
 
 use crate::db;
 use crate::visits::{self, LiveEvent};
@@ -27,6 +27,8 @@ const LAST_ID_KEY: &str = "face_last_event_id";
 const FACE_COOLDOWN_SECS: f64 = 60.0;
 /// events older than this (backlog after we were down) are recorded but not announced
 const FRESH: chrono::Duration = chrono::Duration::seconds(60);
+/// camera released this long after the last app window closed
+const CAMERA_OFF_AFTER: Duration = Duration::from_secs(120);
 /// snapshot photos are kept this long
 const SNAPSHOT_DAYS: u64 = 90;
 
@@ -34,17 +36,34 @@ const SNAPSHOT_DAYS: u64 = 90;
 pub struct Live {
     tx: broadcast::Sender<String>,
     connected: Arc<AtomicBool>,
+    /// open app windows (browser tabs on /api/live)
+    viewers: Arc<AtomicUsize>,
+    /// a window opened: turn the camera on now, don't wait for the next tick
+    wake: Arc<Notify>,
 }
 
 impl Default for Live {
     fn default() -> Self {
-        Self { tx: broadcast::channel(64).0, connected: Arc::default() }
+        Self { tx: broadcast::channel(64).0, connected: Arc::default(), viewers: Arc::default(), wake: Arc::default() }
+    }
+}
+
+/// Counts one open window for as long as its stream lives.
+struct Viewer(Arc<AtomicUsize>);
+
+impl Drop for Viewer {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::Relaxed);
     }
 }
 
 impl Live {
     pub fn send(&self, ev: &LiveEvent) {
         let _ = self.tx.send(serde_json::to_string(ev).unwrap());
+    }
+
+    pub fn viewers(&self) -> usize {
+        self.viewers.load(Ordering::Relaxed)
     }
 
     /// Are we receiving face-service events right now?
@@ -57,13 +76,17 @@ impl Live {
 /// reconnect the tab simply refetches its lists.
 pub async fn sse(State(s): State<AppState>) -> Sse<impl Stream<Item = Result<SseEvent, Infallible>>> {
     let rx = s.live.tx.subscribe();
+    s.live.viewers.fetch_add(1, Ordering::Relaxed);
+    s.live.wake.notify_one();
+    let viewer = Viewer(s.live.viewers.clone());
     let hello = stream::once(async { Ok(SseEvent::default().data(serde_json::to_string(&LiveEvent::refresh()).unwrap())) });
-    let live = stream::unfold(rx, |mut rx| async move {
+    // the Viewer travels with the stream; dropped when the window closes
+    let live = stream::unfold((rx, viewer), |(mut rx, viewer)| async move {
         loop {
             match rx.recv().await {
-                Ok(json) => return Some((Ok(SseEvent::default().data(json)), rx)),
+                Ok(json) => return Some((Ok(SseEvent::default().data(json)), (rx, viewer))),
                 Err(broadcast::error::RecvError::Lagged(_)) => {
-                    return Some((Ok(SseEvent::default().data(serde_json::to_string(&LiveEvent::refresh()).unwrap())), rx))
+                    return Some((Ok(SseEvent::default().data(serde_json::to_string(&LiveEvent::refresh()).unwrap())), (rx, viewer)))
                 }
                 Err(broadcast::error::RecvError::Closed) => return None,
             }
@@ -73,6 +96,7 @@ pub async fn sse(State(s): State<AppState>) -> Sse<impl Stream<Item = Result<Sse
 }
 
 pub fn spawn(s: AppState) {
+    tokio::spawn(camera_keeper(s.clone()));
     let follower = s.clone();
     tokio::spawn(async move {
         loop {
@@ -101,6 +125,39 @@ pub fn spawn(s: AppState) {
             tick += 1;
         }
     });
+}
+
+/// Camera on while an app window is open; released CAMERA_OFF_AFTER after the last
+/// one closes (so a reload doesn't flick it). Re-sent periodically because a
+/// restarted face-service starts with the camera on.
+async fn camera_keeper(s: AppState) {
+    let mut last_viewer = Instant::now();
+    let mut sent: Option<(bool, Instant)> = None;
+    loop {
+        let _ = tokio::time::timeout(Duration::from_secs(5), s.live.wake.notified()).await;
+        if s.live.viewers.load(Ordering::Relaxed) > 0 {
+            last_viewer = Instant::now();
+        }
+        let want = last_viewer.elapsed() < CAMERA_OFF_AFTER;
+        if sent.is_some_and(|(v, at)| v == want && at.elapsed() < Duration::from_secs(30)) {
+            continue;
+        }
+        match s.face.set_camera(want).await {
+            Ok(()) => {
+                if sent.is_none_or(|(v, _)| v != want) {
+                    tracing::info!("camera {}", if want { "on (app window open)" } else { "off (no app window open)" });
+                    // windows refetch the camera state once it has had time to open
+                    let live = s.live.clone();
+                    tokio::spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(3)).await;
+                        live.send(&LiveEvent::refresh());
+                    });
+                }
+                sent = Some((want, Instant::now()));
+            }
+            Err(_) => sent = None, // face-service down; retry next tick
+        }
+    }
 }
 
 /// One connection to face-service's event stream, until it ends.

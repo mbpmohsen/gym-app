@@ -36,14 +36,14 @@ type Dash = {
   days: [string, number, number][]
   busy: ReportTable
 }
-type FaceHealth = { reachable: boolean; camera?: { connected: boolean }; events?: boolean }
+type FaceHealth = { reachable: boolean; camera?: { connected: boolean; active?: boolean; name?: string }; events?: boolean }
 
 export function DashboardPage() {
   const q = useQuery({ queryKey: ['dashboard'], queryFn: () => get<Dash>('/dashboard'), refetchInterval: 60_000 })
   const health = useQuery({ queryKey: ['face-health'], queryFn: () => get<FaceHealth>('/face/health'), refetchInterval: 10_000 })
   const d = q.data
   const h = health.data
-  const faceProblem = h && (!h.reachable ? 'سرویس تشخیص چهره اجرا نیست' : !h.camera?.connected ? 'دوربین وصل نیست' : h.events === false ? 'رویدادهای دوربین دریافت نمی‌شود' : null)
+  const faceProblem = h && (!h.reachable ? 'سرویس تشخیص چهره اجرا نیست' : !h.camera?.connected ? (h.camera?.active === false || h.camera?.name === 'paused' ? null : 'دوربین وصل نیست') : h.events === false ? 'رویدادهای دوربین دریافت نمی‌شود' : null)
 
   return (
     <>

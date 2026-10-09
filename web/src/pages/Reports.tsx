@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 
 import { JalaliDateInput, MoneyInput } from '@/components/inputs'
 import { PageHeader } from '@/components/page'
@@ -140,6 +141,18 @@ const REPORTS: ReportDef[] = [
   },
 ]
 
+/** Excel comes from the real server; the demo has none. */
+function exportProps(href: string) {
+  if (!import.meta.env.VITE_DEMO) return { href, download: true }
+  return {
+    href: '#',
+    onClick: (e: React.MouseEvent) => {
+      e.preventDefault()
+      toast.info('خروجی اکسل در نسخه‌ی نمایشی غیرفعال است؛ در برنامه‌ی نصب‌شده کار می‌کند.')
+    },
+  }
+}
+
 const query = (f: Filters) => new URLSearchParams(Object.entries(f).filter(([, v]) => v && v !== 'all')).toString()
 
 // ---------- page ----------
@@ -202,14 +215,14 @@ function ReportView({ def }: { def: ReportDef }) {
         <div className="ms-auto flex gap-2">
           {hasPhone && (
             <Button variant="outline" asChild>
-              <a href={`/api/reports/${def.id}.xlsx?${qs}${qs ? '&' : ''}sms=1`} download>
+              <a {...exportProps(`/api/reports/${def.id}.xlsx?${qs}${qs ? '&' : ''}sms=1`)}>
                 <MessageSquareTextIcon />
                 خروجی پیامک
               </a>
             </Button>
           )}
           <Button variant="outline" asChild>
-            <a href={`/api/reports/${def.id}.xlsx?${qs}`} download>
+            <a {...exportProps(`/api/reports/${def.id}.xlsx?${qs}`)}>
               <FileSpreadsheetIcon />
               خروجی اکسل
             </a>

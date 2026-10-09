@@ -33,6 +33,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ApiError, get, post } from '@/lib/api'
 import { faDigits, num, time } from '@/lib/format'
+import { previewSrc, snapshotSrc } from '@/lib/media'
 import { FLAG_LABEL, GENDER_LABEL, type FaceEvent, type Reception, type Visit } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { remainingText } from './members/MembersList'
@@ -49,7 +50,7 @@ function readPreviewPref(): boolean {
   }
 }
 
-type FaceHealth = { reachable: boolean; camera?: { connected: boolean }; events?: boolean }
+type FaceHealth = { reachable: boolean; camera?: { connected: boolean; active?: boolean; name?: string }; events?: boolean }
 
 export function ReceptionPage() {
   const qc = useQueryClient()
@@ -95,7 +96,7 @@ export function ReceptionPage() {
     : !h.reachable
       ? 'سرویس تشخیص چهره اجرا نیست'
       : !h.camera?.connected
-        ? 'دوربین وصل نیست'
+        ? (h.camera?.active === false || h.camera?.name === 'paused' ? null : 'دوربین وصل نیست')
         : h.events === false
           ? 'اتصال به رویدادهای دوربین برقرار نیست'
           : null
@@ -103,7 +104,7 @@ export function ReceptionPage() {
   const data = q.data
   return (
     <>
-      <PageHeader title="پذیرش">
+      <PageHeader title="پذیرش" description="این پنجره را باز بگذارید: دوربین فقط وقتی برنامه باز است روشن است و ۲ دقیقه بعد از بستن آن خاموش می‌شود.">
         <div className="flex flex-wrap items-center gap-2">
           <ShiftNow />
           <Stat label="الان داخل" value={data?.inside} />
@@ -130,7 +131,7 @@ export function ReceptionPage() {
 
         {preview && (
           <Card className="overflow-hidden p-0">
-            <img src="/api/face/preview" alt="تصویر زنده‌ی دوربین" className="mx-auto aspect-[4/3] max-h-80 bg-black object-contain" />
+            <img src={previewSrc()} alt="تصویر زنده‌ی دوربین" className="mx-auto aspect-[4/3] max-h-80 bg-black object-contain" />
           </Card>
         )}
 
@@ -232,7 +233,7 @@ function Stat({ label, value }: { label: string; value?: number }) {
 }
 
 function Avatar({ snapshot, name }: { snapshot: string | null; name: string }) {
-  if (snapshot) return <img src={`/api/snapshots/${snapshot}`} alt="" className="bg-muted size-10 rounded-lg object-cover" />
+  if (snapshot) return <img src={snapshotSrc(snapshot)} alt="" className="bg-muted size-10 rounded-lg object-cover" />
   return <span className="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-lg text-sm font-bold">{name.trim().charAt(0)}</span>
 }
 
@@ -342,7 +343,7 @@ function FaceCard({
       className="flex-row gap-3 p-3"
     >
       {event.snapshot ? (
-        <img src={`/api/snapshots/${event.snapshot}`} alt="" className="bg-muted size-20 shrink-0 rounded-lg object-cover" />
+        <img src={snapshotSrc(event.snapshot)} alt="" className="bg-muted size-20 shrink-0 rounded-lg object-cover" />
       ) : (
         <span className="bg-muted size-20 shrink-0 rounded-lg" />
       )}

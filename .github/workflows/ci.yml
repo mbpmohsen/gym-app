@@ -1,0 +1,24 @@
+# Tests on every push / PR: server rules and the web build.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # the server embeds web/dist, so the UI is built first
+      - run: npm ci --prefix web && npm run build --prefix web
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - run: cargo test --manifest-path server/Cargo.toml

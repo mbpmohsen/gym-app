@@ -29,3 +29,15 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1
 - لاگ‌ها: `C:\ProgramData\GymApp\*\data\logs`
 
 **پشتیبان‌گیری:** کل پوشه‌ی `C:\ProgramData\GymApp` (اول هر دو سرویس رو از services.msc متوقف کنید).
+
+## انتشار نسخه
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+workflow‏ `release` روی ویندوزِ GitHub همه چیز را می‌سازد (ONNX Runtime و مدل‌ها را خودش دانلود می‌کند) و `GymApp-Setup-1.0.0.exe` را همراه SHA256 در Releases می‌گذارد.
+
+## سایت و دمو
+
+`site/` صفحه‌ی معرفی است و `web` در حالت دمو (`npm run build:demo`) کل برنامه را بدون سرور و با داده‌ی ساختگی داخل مرورگر اجرا می‌کند. workflow‏ `pages` با هر push روی main هر دو را روی GitHub Pages منتشر می‌کند (یک بار: Settings ← Pages ← Source: GitHub Actions).

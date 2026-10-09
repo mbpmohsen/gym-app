@@ -43,11 +43,7 @@ export const useLiveConnected = () => useSyncExternalStore(subscribe, () => conn
 export function useLive() {
   const qc = useQueryClient()
   useEffect(() => {
-    const es = new EventSource('/api/live')
-    es.onopen = () => ((connected = true), notify())
-    es.onerror = () => ((connected = false), notify()) // EventSource retries by itself
-    es.onmessage = (m) => {
-      const ev = JSON.parse(m.data) as LiveEvent
+    const onEvent = (ev: LiveEvent) => {
       void qc.invalidateQueries({ queryKey: ['reception'] })
       void qc.invalidateQueries({ queryKey: ['face-health'] })
       if (ev.member_id) {
@@ -59,6 +55,16 @@ export function useLive() {
       else if (ev.kind === 'entry' && ev.status !== 'ok') toast.warning(`${ev.name}: پایان شهریه یا بدهی`)
       if (ev.sound && leader) play(ev.sound).catch((e) => console.error('sound failed', e))
     }
+    if (import.meta.env.VITE_DEMO) {
+      let off = () => {}
+      connected = true
+      void import('@/demo/server').then((d) => (off = d.onLive(onEvent as never)))
+      return () => off()
+    }
+    const es = new EventSource('/api/live')
+    es.onopen = () => ((connected = true), notify())
+    es.onerror = () => ((connected = false), notify()) // EventSource retries by itself
+    es.onmessage = (m) => onEvent(JSON.parse(m.data) as LiveEvent)
     return () => es.close()
   }, [qc])
 }

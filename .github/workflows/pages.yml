@@ -1,0 +1,48 @@
+# Landing page (site/) + in-browser demo (web, demo mode) on GitHub Pages.
+# One-time: repo Settings -> Pages -> Source: "GitHub Actions".
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'web/**', 'assets/voices/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefix web && npm run build:demo --prefix web
+      - name: Assemble
+        run: |
+          mkdir -p _site
+          cp -r site/* _site/
+          cp -r web/dist-demo _site/demo
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

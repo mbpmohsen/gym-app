@@ -51,6 +51,9 @@ pub struct Shared {
     pub status: Mutex<Status>,
     pub snapshots_dir: PathBuf,
     pub stop: AtomicBool,
+    /// false = camera released (light off) until set back to true. gym-server
+    /// turns it off while no app window is open.
+    pub camera_active: AtomicBool,
 }
 
 impl Shared {
@@ -63,6 +66,7 @@ impl Shared {
             status: Mutex::new(Status::default()),
             snapshots_dir,
             stop: AtomicBool::new(false),
+            camera_active: AtomicBool::new(true),
         }
     }
 }
@@ -80,6 +84,14 @@ pub fn run(mut engine: Engine, mut rec_cfg: Recognition, camera_spec: String, sh
     apply_recognition(&mut engine, &rec_cfg);
 
     while !shared.stop.load(Ordering::Relaxed) {
+        if !shared.camera_active.load(Ordering::Relaxed) {
+            set_camera(&shared, "paused".into(), false);
+            while !shared.camera_active.load(Ordering::Relaxed) && !shared.stop.load(Ordering::Relaxed) {
+                handle_commands(&rx, &mut engine, &mut enroll, &mut rec_cfg, &shared);
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            continue;
+        }
         let source = match camera::open_source(&camera_spec, 10.0) {
             Ok(s) => s,
             Err(e) => {
@@ -105,6 +117,10 @@ pub fn run(mut engine: Engine, mut rec_cfg: Recognition, camera_spec: String, sh
             handle_commands(&rx, &mut engine, &mut enroll, &mut rec_cfg, &shared);
             if shared.stop.load(Ordering::Relaxed) {
                 return;
+            }
+            if !shared.camera_active.load(Ordering::Relaxed) {
+                info!("camera paused: releasing the device");
+                break; // dropping `source` closes the camera
             }
             let frame = match source.latest.wait_newer_for(last_seq, Duration::from_millis(200)) {
                 Wait::Frame(f) => f,

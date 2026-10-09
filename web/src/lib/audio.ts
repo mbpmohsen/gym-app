@@ -46,7 +46,7 @@ export async function loadVoice(v: Voice): Promise<void> {
   const loaded: Partial<Record<Sound, AudioBuffer>> = {}
   await Promise.all(
     SOUNDS.map(async (s) => {
-      const bytes = await (await fetch(`/voices/${v}/${s}.mp3`)).arrayBuffer()
+      const bytes = await (await fetch(`${import.meta.env.BASE_URL}voices/${v}/${s}.mp3`)).arrayBuffer()
       loaded[s] = await c.decodeAudioData(bytes)
     }),
   )

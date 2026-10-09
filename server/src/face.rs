@@ -100,6 +100,11 @@ impl FaceClient {
         Ok(())
     }
 
+    /// Turns the camera on or releases it (light off).
+    pub async fn set_camera(&self, active: bool) -> ApiResult<()> {
+        self.call(reqwest::Method::POST, "/camera", Some(json!({ "active": active }))).await.map(|_| ())
+    }
+
     /// The event stream (SSE), resumed after `last_id`.
     pub async fn events(&self, last_id: Option<&str>) -> anyhow::Result<reqwest::Response> {
         let mut req = self.stream.get(self.url("/events")).bearer_auth(&self.token);
@@ -133,7 +138,7 @@ impl FaceClient {
 /// Status for the header indicator: service reachable? camera connected?
 pub async fn health(State(s): State<AppState>) -> Json<Value> {
     match s.face.call(reqwest::Method::GET, "/health", None).await {
-        Ok(h) => Json(json!({ "reachable": true, "camera": h["camera"], "fps": h["fps"], "enroll": h["enroll"], "events": s.live.connected() })),
+        Ok(h) => Json(json!({ "reachable": true, "camera": h["camera"], "viewers": s.live.viewers(), "fps": h["fps"], "enroll": h["enroll"], "events": s.live.connected() })),
         Err(e) => Json(json!({ "reachable": false, "error": e.message() })),
     }
 }

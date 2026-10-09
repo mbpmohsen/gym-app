@@ -8,7 +8,7 @@ import { MotionConfig } from 'motion/react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Direction } from 'radix-ui'
-import { BrowserRouter, Route, Routes } from 'react-router'
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router'
 
 import { AuthGate } from '@/components/AuthGate'
 import { Layout } from '@/components/Layout'
@@ -23,6 +23,9 @@ import { ReceptionPage } from '@/pages/Reception'
 import { ReportsPage } from '@/pages/Reports'
 import { ShiftsPage } from '@/pages/Shifts'
 import { SettingsPage } from '@/pages/Settings'
+
+// the demo is static files on GitHub Pages: no server to answer deep links
+const Router = import.meta.env.VITE_DEMO ? HashRouter : BrowserRouter
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +49,7 @@ createRoot(document.getElementById('root')!).render(
     <MotionConfig reducedMotion="user">
     <Direction.Provider dir="rtl">
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <Router>
         <AuthGate>
           <Routes>
             <Route element={<Layout />}>
@@ -62,7 +65,7 @@ createRoot(document.getElementById('root')!).render(
             </Route>
           </Routes>
         </AuthGate>
-      </BrowserRouter>
+      </Router>
       <Toaster />
     </QueryClientProvider>
     </Direction.Provider>

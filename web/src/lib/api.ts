@@ -13,6 +13,11 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
+  if (import.meta.env.VITE_DEMO) {
+    // GitHub Pages demo: an in-browser fake server (removed from the real build)
+    const { handle } = await import('@/demo/server')
+    return (await handle(method, path, body)) as T
+  }
   let res: Response
   try {
     res = await fetch(`/api${path}`, {

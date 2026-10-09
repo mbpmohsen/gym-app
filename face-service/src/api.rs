@@ -13,6 +13,7 @@
 //!   GET    /v1/preview                      MJPEG with face boxes
 //!   GET    /v1/snapshots/{id}.jpg
 //!   GET    /v1/config   PUT /v1/config      {"threshold", "cooldown_secs", "max_fps"} (partial)
+//!   POST   /v1/camera                       {"active": false} releases the camera, true reopens it
 //!   GET    /                                test page
 
 use std::convert::Infallible;
@@ -71,6 +72,7 @@ pub fn router(state: AppState) -> Router {
         .route("/preview", get(preview))
         .route("/snapshots/{file}", get(snapshot))
         .route("/config", get(get_config).put(put_config))
+        .route("/camera", axum::routing::post(set_camera_active))
         .layer(middleware::from_fn_with_state(state.clone(), auth));
     Router::new()
         .route("/", get(|| async { Html(include_str!("web/index.html")) }))
@@ -109,7 +111,7 @@ async fn health(State(s): State<AppState>) -> ApiResult {
         "status": if st.camera_connected { "ok" } else { "degraded" },
         "version": env!("CARGO_PKG_VERSION"),
         "uptime_secs": s.started.elapsed().as_secs(),
-        "camera": { "name": st.camera, "connected": st.camera_connected },
+        "camera": { "name": st.camera, "connected": st.camera_connected, "active": s.shared.camera_active.load(Ordering::Relaxed) },
         "fps": st.fps,
         "avg_ms": st.avg_ms,
         "frames_processed": st.frames_processed,
@@ -270,6 +272,20 @@ async fn snapshot(State(s): State<AppState>, Path(file): Path<String>) -> ApiRes
         Ok(bytes) => Ok(([(header::CONTENT_TYPE, "image/jpeg")], bytes).into_response()),
         Err(_) => Err(err(StatusCode::NOT_FOUND, "snapshot not found (expired?)")),
     }
+}
+
+#[derive(Deserialize)]
+struct CameraBody {
+    active: bool,
+}
+
+/// `{"active": false}` releases the camera (its light goes off); `true` reopens it.
+async fn set_camera_active(State(s): State<AppState>, Json(b): Json<CameraBody>) -> ApiResult {
+    let was = s.shared.camera_active.swap(b.active, Ordering::Relaxed);
+    if was != b.active {
+        tracing::info!("camera {} by client", if b.active { "resumed" } else { "paused" });
+    }
+    Ok(Json(json!({ "active": b.active })).into_response())
 }
 
 async fn get_config(State(s): State<AppState>) -> ApiResult {

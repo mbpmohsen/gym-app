@@ -11,7 +11,9 @@
 ; data in ProgramData.
 
 #define AppName "Gym App"
-#define AppVersion "1.0.0"
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
 #define AppPublisher "Gym App (open source)"
 #define AppUrl "https://github.com/mbpmohsen/gym-app"
 #define Root ".."
@@ -151,7 +153,7 @@ begin
       'models_dir = ''' + App + '\face-service\models''' + #13#10 +
       'data_dir = "data"' + #13#10 +
       'onnxruntime = ''' + App + '\face-service\onnxruntime.dll''' + #13#10 +
-      #13#10 + '[recognition]' + #13#10 +
+      '' + #13#10 + '[recognition]' + #13#10 +
       'threshold = 0.363' + #13#10 +
       'cooldown_secs = 60.0' + #13#10 +
       'max_fps = 8.0' + #13#10, False);

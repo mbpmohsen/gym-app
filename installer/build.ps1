@@ -2,6 +2,8 @@
 #   powershell -ExecutionPolicy Bypass -File installer\build.ps1
 # Output: installer\Output\GymApp-Setup-<version>.exe
 
+param([string]$Version = '')   # e.g. 1.2.0; default: the one in gym-app.iss
+
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 
@@ -17,7 +19,7 @@ Step 'gym-server' "$root\server" { cargo build --release }
 Step 'face-service' "$root\face-service" { cargo build --release --bin face-service }
 
 foreach ($f in @("$root\face-service\onnxruntime.dll", "$root\face-service\models\face_detection_yunet_2023mar.onnx", "$root\face-service\models\face_recognition_sface_2021dec.onnx")) {
-    if (-not (Test-Path $f)) { throw "missing $f (see face-service\README.md)" }
+    if (-not (Test-Path $f)) { throw "missing $f (run installer\fetch-deps.ps1)" }
 }
 
 $iscc = @(
@@ -27,5 +29,7 @@ $iscc = @(
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw 'Inno Setup 6 not found: winget install JRSoftware.InnoSetup' }
 
-Step 'installer' $PSScriptRoot { & $iscc 'gym-app.iss' }
+$isccArgs = @('gym-app.iss')
+if ($Version) { $isccArgs = @("/DAppVersion=$Version") + $isccArgs }
+Step 'installer' $PSScriptRoot { & $iscc @isccArgs }
 Write-Host "`nDone: $(Get-ChildItem "$PSScriptRoot\Output\*.exe" | Sort-Object LastWriteTime | Select-Object -Last 1)" -ForegroundColor Green
