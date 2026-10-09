@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   Themes = mode (light / dark) × accent (data-accent on <html>).
+   Base tokens follow shadcn (neutral). Accents only change primary + ring.
+   Status colors (success / warning / destructive) carry meaning and are the
+   same in every accent: green = ok, amber = warning, red = end of tuition.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.546 0.245 262.881);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.546 0.245 262.881);
+
+  --success: oklch(0.6 0.15 150);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.78 0.16 75);
+  --warning-foreground: oklch(0.25 0.05 75);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.19 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.623 0.214 259.815);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.623 0.214 259.815);
+
+  --success: oklch(0.7 0.15 150);
+  --success-foreground: oklch(0.18 0.03 150);
+  --warning: oklch(0.82 0.15 80);
+  --warning-foreground: oklch(0.22 0.05 75);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --sidebar: oklch(0.17 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+}
+
+/* accents: [light, dark] primary */
+[data-accent='blue'] { --primary: oklch(0.546 0.245 262.881); --ring: var(--primary); }
+.dark[data-accent='blue'] { --primary: oklch(0.623 0.214 259.815); }
+[data-accent='emerald'] { --primary: oklch(0.596 0.145 163.225); --ring: var(--primary); }
+.dark[data-accent='emerald'] { --primary: oklch(0.696 0.17 162.48); --primary-foreground: oklch(0.2 0.05 163); }
+[data-accent='violet'] { --primary: oklch(0.541 0.281 293.009); --ring: var(--primary); }
+.dark[data-accent='violet'] { --primary: oklch(0.606 0.25 292.717); }
+[data-accent='orange'] { --primary: oklch(0.646 0.222 41.116); --ring: var(--primary); }
+.dark[data-accent='orange'] { --primary: oklch(0.705 0.213 47.604); }
+[data-accent='rose'] { --primary: oklch(0.586 0.253 17.585); --ring: var(--primary); }
+.dark[data-accent='rose'] { --primary: oklch(0.645 0.246 16.439); }
+[data-accent='neutral'] { --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.708 0 0); }
+.dark[data-accent='neutral'] { --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0); --ring: oklch(0.556 0 0); }
+
+@theme inline {
+  --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* aligned digits for times, counts and money */
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

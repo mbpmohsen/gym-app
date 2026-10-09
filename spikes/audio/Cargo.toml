@@ -1,0 +1,16 @@
+[package]
+name = "audio-spike"
+version = "0.1.0"
+edition = "2021"
+
+# Throwaway spike (milestone 0): does the browser keep playing sounds pushed over
+# SSE for hours, minimized, after sleep? Not part of the product.
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+strip = true

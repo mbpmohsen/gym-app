@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>مدیریت باشگاه</title>
+    <script>
+      // apply the saved theme before first paint (same logic as src/lib/theme.ts)
+      try {
+        var t = JSON.parse(localStorage.getItem('gym-theme') || '{}')
+        var d = t.mode === 'dark' || (t.mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (d) document.documentElement.classList.add('dark')
+        document.documentElement.dataset.accent = t.accent || 'blue'
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

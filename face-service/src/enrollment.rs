@@ -38,6 +38,8 @@ pub struct EnrollSession {
     pub state: EnrollState,
     /// human-readable guidance for the person in front of the camera
     pub hint: String,
+    /// stable code for `hint`, for clients that show their own (translated) text
+    pub hint_code: &'static str,
     started: Instant,
     last_kept: Option<Instant>,
 }
@@ -49,6 +51,7 @@ pub struct EnrollStatus {
     pub collected: usize,
     pub target: usize,
     pub hint: String,
+    pub hint_code: &'static str,
     /// lowest similarity between two samples (lower = more varied); null until 2 samples
     pub diversity: Option<f32>,
 }
@@ -62,6 +65,7 @@ impl EnrollSession {
             crops: Vec::new(),
             state: EnrollState::Collecting,
             hint: "look at the camera".into(),
+            hint_code: "look",
             started: Instant::now(),
             last_kept: None,
         }
@@ -78,12 +82,12 @@ impl EnrollSession {
         }
         let faces = det.detect(img)?;
         let face = match faces.len() {
-            0 => return self.hint("no face"),
+            0 => return self.hint("no_face", "no face"),
             1 => &faces[0],
-            _ => return self.hint("more than one face in view"),
+            _ => return self.hint("multiple_faces", "more than one face in view"),
         };
         if let Err(r) = quality::check(face, img.width(), img.height(), &QualityConfig::default()) {
-            return self.hint(&r.to_string());
+            return self.hint(r.code(), &r.to_string());
         }
         if self.last_kept.is_some_and(|t| at.duration_since(t) < MIN_GAP) {
             return Ok(false);
@@ -91,24 +95,27 @@ impl EnrollSession {
         let aligned = align::align_face(img, &face.landmarks);
         let e = rec.embed(&aligned)?;
         if self.kept.iter().any(|k| cosine(k, &e) >= MAX_SIMILARITY_TO_KEPT) {
-            return self.hint("slowly turn your head a little");
+            return self.hint("too_similar", "slowly turn your head a little");
         }
         if !self.kept.is_empty() && cosine(&self.centroid(), &e) < MIN_SIMILARITY_TO_CENTROID {
-            return self.hint("a different person is in view; only the member should face the camera");
+            return self.hint("different_person", "a different person is in view; only the member should face the camera");
         }
         self.kept.push(e);
         self.crops.push(aligned);
         self.last_kept = Some(at);
         self.hint = "good, keep moving slowly".into();
+        self.hint_code = "good";
         if self.kept.len() >= self.target {
             self.state = EnrollState::Ready;
             self.hint = "done".into();
+            self.hint_code = "done";
         }
         Ok(true)
     }
 
-    fn hint(&mut self, h: &str) -> Result<bool> {
+    fn hint(&mut self, code: &'static str, h: &str) -> Result<bool> {
         self.hint = h.into();
+        self.hint_code = code;
         Ok(false)
     }
 
@@ -116,9 +123,11 @@ impl EnrollSession {
         if self.kept.len() >= MIN_SAMPLES {
             self.state = EnrollState::Ready;
             self.hint = format!("timeout, {} samples collected", self.kept.len());
+            self.hint_code = "timeout_ready";
         } else {
             self.state = EnrollState::Failed;
             self.hint = format!("timeout with only {} usable samples; improve light and retry", self.kept.len());
+            self.hint_code = "timeout_failed";
         }
     }
 
@@ -154,6 +163,7 @@ impl EnrollSession {
             collected: self.kept.len(),
             target: self.target,
             hint: self.hint.clone(),
+            hint_code: self.hint_code,
             diversity: self.diversity(),
         }
     }

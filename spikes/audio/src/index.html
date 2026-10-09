@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>audio spike</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font: 15px/1.6 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  button { font: inherit; padding: 10px 20px; border-radius: 8px; border: 0; background: #2f6fdf; color: #fff; cursor: pointer; }
+  select { font: inherit; padding: 6px; }
+  #log { font: 13px/1.5 ui-monospace, monospace; direction: ltr; text-align: left; background: #f3f3f1; padding: 10px; border-radius: 6px; height: 320px; overflow-y: auto; }
+  .ok { color: #1f9d55; } .bad { color: #d64545; }
+</style>
+</head>
+<body>
+<h2>تست پخش صدا</h2>
+<p>«شروع» رو بزن، بعد مرورگر رو minimize کن یا سیستم رو قفل یا sleep کن. نتیجه‌ی هر پخش در فایل <code>audio-spike.log</code> کنار برنامه ثبت می‌شه.</p>
+<p>
+  صدا:
+  <select id="gender"><option value="male">مرد</option><option value="female">زن</option></select>
+  <button id="start">شروع</button>
+  <span id="state"></span>
+</p>
+<div id="log"></div>
+<script>
+const SOUNDS = ['welcome', 'end-of-tuition', 'wrong-shift', 'goodbye'];
+const $ = id => document.getElementById(id);
+const log = (t, cls) => {
+  const d = document.createElement('div');
+  d.textContent = `${new Date().toLocaleTimeString('fa-IR')}  ${t}`;
+  if (cls) d.className = cls;
+  $('log').prepend(d);
+};
+// Web Audio: ONE context, unlocked by the click, plays every sound afterwards.
+// (Plain <audio> elements failed randomly with NotAllowedError, even on a visible tab.)
+let ctx, buffers = {};
+
+async function load(gender) {
+  ctx = new AudioContext();
+  buffers = {};
+  await Promise.all(SOUNDS.map(async s => {
+    const bytes = await (await fetch(`/voice/${gender}/${s}.mp3`)).arrayBuffer();
+    buffers[s] = await ctx.decodeAudioData(bytes);
+  }));
+}
+
+async function play(name) {
+  // after sleep/lock the browser may suspend the context; resume (no gesture needed once unlocked)
+  if (ctx.state !== 'running') await ctx.resume();
+  if (ctx.state !== 'running') throw new Error('AudioContext ' + ctx.state);
+  const src = ctx.createBufferSource();
+  src.buffer = buffers[name];
+  src.connect(ctx.destination);
+  await new Promise(res => { src.onended = res; src.start(); });
+}
+
+$('start').onclick = async () => {
+  try {
+    await load($('gender').value);
+    await play('welcome'); // user gesture: unlocks autoplay for this tab
+    log('unlocked, test sound played', 'ok');
+  } catch (e) {
+    log('unlock failed: ' + e.message, 'bad');
+    return;
+  }
+  $('start').disabled = true;
+  $('state').textContent = 'در حال اجرا…';
+
+  const es = new EventSource('/events');
+  es.onopen = () => log('connected');
+  es.onerror = () => log('connection lost, reconnecting…', 'bad');
+  es.onmessage = async m => {
+    const id = m.lastEventId, name = m.data;
+    let result;
+    try { await play(name); result = 'PLAYED'; log(`#${id} ${name} played`, 'ok'); }
+    catch (e) { result = `FAILED ${e.name || ''} ${e.message} (ctx ${ctx.state})`; log(`#${id} ${name} FAILED ${e.message}`, 'bad'); }
+    fetch(`/report?id=${id}&hidden=${document.hidden}&result=${encodeURIComponent(result)}`, { method: 'POST' });
+  };
+};
+</script>
+</body>
+</html>

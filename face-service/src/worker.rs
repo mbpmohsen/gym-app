@@ -136,7 +136,7 @@ pub fn run(mut engine: Engine, mut rec_cfg: Recognition, camera_spec: String, sh
             }
 
             if shared.preview_clients.load(Ordering::Relaxed) > 0 {
-                let jpg = render_preview(&frame.image, &infos, enroll.as_ref().filter(|_| collecting), engine.cfg.threshold);
+                let jpg = render_preview(&frame.image, &infos, engine.cfg.threshold);
                 shared.preview.send_replace(Some(Arc::new(jpg)));
             }
 
@@ -288,11 +288,10 @@ fn prune_snapshots(shared: &Shared) {
 const GREEN: Rgb<u8> = Rgb([40, 200, 80]);
 const RED: Rgb<u8> = Rgb([230, 50, 50]);
 const YELLOW: Rgb<u8> = Rgb([250, 200, 0]);
-const BLUE: Rgb<u8> = Rgb([50, 120, 255]);
 
 /// Preview frame: boxes colored by state (green match, red no match, yellow
-/// rejected by quality); during enrollment a blue progress bar.
-fn render_preview(img: &RgbImage, infos: &[FaceInfo], enroll: Option<&EnrollSession>, threshold: f32) -> Vec<u8> {
+/// rejected by quality). Enrollment progress is shown by the client, not drawn here.
+fn render_preview(img: &RgbImage, infos: &[FaceInfo], threshold: f32) -> Vec<u8> {
     let mut out = img.clone();
     for i in infos {
         let color = match (&i.rejected, &i.best) {
@@ -301,15 +300,6 @@ fn render_preview(img: &RgbImage, infos: &[FaceInfo], enroll: Option<&EnrollSess
             _ => RED,
         };
         draw_rect(&mut out, &i.face.bbox, color, 2);
-    }
-    if let Some(s) = enroll {
-        let (w, h) = (out.width(), out.height());
-        let filled = (w as f32 * s.kept.len() as f32 / s.target as f32) as u32;
-        for y in h.saturating_sub(12)..h {
-            for x in 0..w {
-                out.put_pixel(x, y, if x < filled { BLUE } else { Rgb([30, 30, 30]) });
-            }
-        }
     }
     encode_jpeg(&out, 70)
 }
