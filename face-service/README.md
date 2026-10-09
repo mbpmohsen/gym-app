@@ -134,7 +134,7 @@ target/release/face-service.exe uninstall
 - YuNet: ۵.۴ms — SFace: ۱۶ms
 
 ### Milestone 2 ✅ (golden test روی لینوکس)
-- روی هر ۳ عکس تست: bbox و landmarkها Δ0.000px، score Δ0، cosine(Rust, OpenCV) = 1.00000
+- روی عکس‌های تست (lena، messi5): bbox و landmarkها Δ0.000px، score Δ0، cosine(Rust, OpenCV) = 1.00000
 - تست حساسه: با برعکس کردن RGB/BGR، cosine به 0.970 می‌رسه و FAIL می‌شه
 - compare: آدم‌های متفاوت 0.08 تا 0.13 (خیلی زیر 0.363)
 
