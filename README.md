@@ -1,6 +1,30 @@
-# gym-app
+<div dir="rtl">
 
-نرم‌افزار متن‌باز مدیریت باشگاه: محلی، آفلاین، رایگان، با حضور و غیاب خودکار از طریق تشخیص چهره با یک وبکم معمولی.
+# Gym App
+
+برنامه‌ی رایگان و متن‌باز مدیریت باشگاه. یه وبکم معمولی بذارید بالای جاکفشی؛ هر کی بیاد، برنامه از روی چهره می‌شناسدش، ورودش رو ثبت می‌کنه و با صدا بهش خوش‌آمد می‌گه. اگه شهریه‌اش تموم شده باشه هم همون‌جا اعلام می‌کنه. همه‌چی روی کامپیوتر خود باشگاه و بدون اینترنت.
+
+🌐 **سایت:** https://mbpmohsen.github.io/gym-app/
+
+▶️ **امتحان آنلاین (بدون نصب):** https://mbpmohsen.github.io/gym-app/demo/
+
+⬇️ **دانلود برای ویندوز:** [آخرین نسخه](https://github.com/mbpmohsen/gym-app/releases/latest)
+
+![صفحه‌ی پذیرش Gym App](site/screens/reception.webp)
+
+## چی کار می‌کنه؟
+
+- **حضور و غیاب خودکار:** ورود و خروج با چهره ثبت می‌شه و یه جلسه از اشتراک کم می‌شه. کارت و اثر انگشت لازم نیست.
+- **اعلام صوتی:** «خوش اومدی»، «شهریه‌ت تموم شده» یا «الان سانس شما نیست»، با صدای آقا یا خانم.
+- **اعضا و اشتراک‌ها:** جلسه‌ای، ماهانه، ترکیبی، یه روز در میون، با دوش یا کمد. پرداخت ناقص بدهی ثبت می‌شه.
+- **سانس‌بندی:** سانس آقایون و خانم‌ها، با هشدار برای کسی که تو سانس اشتباه بیاد.
+- **گزارش و اکسل:** درآمد، ورودها، اشتراک‌های رو به اتمام، بدهکارها، غایب‌ها و ساعت‌های شلوغ، به‌علاوه‌ی خروجی شماره‌ها برای پیامک.
+- **داشبورد:** آمار امروز و یه ماه اخیر در یه نگاه.
+- **حریم خصوصی:** از چهره‌ها عکس نگه نمی‌داره، چیزی به اینترنت نمی‌فرسته و دوربین فقط وقتی برنامه بازه روشنه.
+
+پیش‌نیاز: ویندوز ۱۰ یا ۱۱ و یه وبکم معمولی. تاریخ‌ها شمسی و مبلغ‌ها به تومان هستن.
+
+## برای برنامه‌نویس‌ها
 
 | پوشه | محتوا |
 |---|---|
@@ -14,9 +38,10 @@
 
 ## ساخت نصب‌کننده (ویندوز)
 
-پیش‌نیازها: Rust (MSVC)، Node.js، [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`)، و `face-service/onnxruntime.dll` (نسخه‌ی 1.22) و مدل‌ها در `face-service/models` (راهنما در `face-service/README.md`).
+پیش‌نیازها: Rust (MSVC)، Node.js و [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`). ONNX Runtime و مدل‌ها رو `installer/fetch-deps.ps1` دانلود می‌کنه.
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File installer\fetch-deps.ps1
 powershell -ExecutionPolicy Bypass -File installer\build.ps1
 ```
 
@@ -36,8 +61,10 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-workflow‏ `release` روی ویندوزِ GitHub همه چیز را می‌سازد (ONNX Runtime و مدل‌ها را خودش دانلود می‌کند) و `GymApp-Setup-1.0.0.exe` را همراه SHA256 در Releases می‌گذارد.
+workflow‏ `release` روی ویندوزِ GitHub همه‌چی رو می‌سازه (ONNX Runtime و مدل‌ها رو هم خودش دانلود می‌کنه) و `GymApp-Setup-1.0.0.exe` رو همراه SHA256 توی Releases می‌ذاره.
 
 ## سایت و دمو
 
-`site/` صفحه‌ی معرفی است و `web` در حالت دمو (`npm run build:demo`) کل برنامه را بدون سرور و با داده‌ی ساختگی داخل مرورگر اجرا می‌کند. workflow‏ `pages` با هر push روی main هر دو را روی GitHub Pages منتشر می‌کند (یک بار: Settings ← Pages ← Source: GitHub Actions).
+`site/` صفحه‌ی معرفیه و `web` توی حالت دمو (`npm run build:demo`) کل برنامه رو بدون سرور و با اطلاعات ساختگی توی مرورگر اجرا می‌کنه. workflow‏ `pages` با هر push روی main هر دو رو روی GitHub Pages منتشر می‌کنه (فقط یه بار: Settings ← Pages ← Source: GitHub Actions).
+
+</div>
